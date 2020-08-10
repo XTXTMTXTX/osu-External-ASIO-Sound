@@ -98,5 +98,6 @@ HCHANNEL WINAPI MyBASS_SampleGetChannel(HSAMPLE handle, BOOL onlynew){
 	MyPool->Play.pool[p].handle=handle;
 	p=(p+1)%PlayPoolSize;
 	MyPool->Play.tail=p;
-	return pOrigBASS_SampleGetChannel(handle,onlynew);
+	//return pOrigBASS_SampleGetChannel(handle,onlynew);
+	return 0;
 }

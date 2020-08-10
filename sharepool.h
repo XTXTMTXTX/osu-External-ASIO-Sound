@@ -24,6 +24,8 @@ typedef int BOOL;
 #define MAKELONG(a,b) (DWORD)(((a)&0xffff)|((b)<<16))
 #endif
 
+#define DETAILOUTPUT 0
+
 typedef unsigned __int64 QWORD;
 typedef DWORD HSAMPLE;		// sample handle
 typedef DWORD HCHANNEL;		// playing sample's channel handle
@@ -38,7 +40,7 @@ struct sharepool{
 	struct PlayS{
 		int head,tail;
 		struct PlayP{
-			DWORD Time;
+			double Time;
 			HSAMPLE handle;
 		}pool[PlayPoolSize];
 	}Play;

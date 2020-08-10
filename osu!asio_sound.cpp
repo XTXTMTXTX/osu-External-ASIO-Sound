@@ -30,6 +30,15 @@ inline int readNUM() {
 }
 bool Work=0;
 FMOD_SOUND *KeySound;
+double CPUclock(){
+	LARGE_INTEGER nFreq;
+	LARGE_INTEGER t1;
+	double dt;
+ 	QueryPerformanceFrequency(&nFreq);
+ 	QueryPerformanceCounter(&t1);
+  	dt=(t1.QuadPart)/(double)nFreq.QuadPart;
+  	return(dt*1000);
+}
 void mainloop(){
 	static unordered_map<HSAMPLE,FMOD_SOUND*> sample_maping;
 	while(Work){
@@ -49,13 +58,13 @@ void mainloop(){
 			}else printf("[FMOD] %s\n",FMOD_ErrorString(err));
 		}
 		while(MyPool->Play.head!=MyPool->Play.tail){
-			//printf("[Play] %d -> %d\n",MyPool->Play.head,MyPool->Play.tail);
-			DWORD Time=MyPool->Play.pool[MyPool->Play.head].Time;
+			if(DETAILOUTPUT)printf("[Play] %d -> %d\n",MyPool->Play.head,MyPool->Play.tail);
+			double Time=MyPool->Play.pool[MyPool->Play.head].Time;
 			HSAMPLE hSample=MyPool->Play.pool[MyPool->Play.head].handle;
 			MyPool->Play.head=(MyPool->Play.head+1)%PlayPoolSize;
 			if(sample_maping.count(hSample)){
 				FMOD_System_PlaySound(fmodSystem, sample_maping[hSample], 0, false, 0);
-				//printf("Play\nLatency: %d\nhSample: %u\n",GetTickCount()-Time,hSample);
+				if(DETAILOUTPUT)printf("Play\nLatency: %.4lfms\nhSample: %u\n",CPUclock()-Time,hSample);
 			}
 		}
 		//Sleep(1);

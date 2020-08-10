@@ -20,8 +20,14 @@ struct sharepool *MyPool;
 HANDLE hMapFile;
 LPVOID lpBase;
 
-void readSettings() {
-	
+double CPUclock(){
+	LARGE_INTEGER nFreq;
+	LARGE_INTEGER t1;
+	double dt;
+ 	QueryPerformanceFrequency(&nFreq);
+ 	QueryPerformanceCounter(&t1);
+  	dt=(t1.QuadPart)/(double)nFreq.QuadPart;
+  	return(dt*1000);
 }
 
 extern "C" __declspec(dllexport) void initDLL(){
@@ -94,7 +100,7 @@ HCHANNEL WINAPI MyBASS_SampleGetChannel(HSAMPLE handle, BOOL onlynew){
 	
 	int p=MyPool->Play.tail;
 	while((p+1)%PlayPoolSize==MyPool->Play.head);
-	//MyPool->Play.pool[p].Time=GetTickCount();
+	if(DETAILOUTPUT)MyPool->Play.pool[p].Time=CPUclock();else MyPool->Play.pool[p].Time=0;
 	MyPool->Play.pool[p].handle=handle;
 	p=(p+1)%PlayPoolSize;
 	MyPool->Play.tail=p;

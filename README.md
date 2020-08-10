@@ -31,6 +31,8 @@ If you don't hear anything, check the asio4all control panel and set a larger Bu
 
 \* You need to close effect sounds
 
+\* You need to select **ignore beatmap hitsounds**
+
 \* This program will only play the hit-sounds&sfx in your skin, copy sound files  in **soundpack** into your skin folder to fill the missing sounds
 
 ### Generally

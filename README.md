@@ -35,6 +35,8 @@ If you don't hear anything, check the asio4all control panel and set a larger Bu
 
 \* This program will only play the hit-sounds&sfx in your skin, copy sound files  in **soundpack** into your skin folder to fill the missing sounds
 
+\* You need to delete **spinnerspin** hit-sound in your skin
+
 ### Generally
 
 1) Open osu!.

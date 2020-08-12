@@ -56,6 +56,7 @@ void mainloop(){
 				printf("[FMOD] Loaded Sample (%s)\n", name);
 				sample_maping.insert(pair<HSAMPLE,FMOD_SOUND*>(hSample,KeySound));
 			}else printf("[FMOD] %s\n",FMOD_ErrorString(err));
+			FMOD_System_Update(fmodSystem);
 		}
 		while(MyPool->Play.head!=MyPool->Play.tail){
 			if(DETAILOUTPUT)printf("[Play] %d -> %d\n",MyPool->Play.head,MyPool->Play.tail);
@@ -64,8 +65,15 @@ void mainloop(){
 			MyPool->Play.head=(MyPool->Play.head+1)%PlayPoolSize;
 			auto iter=sample_maping.find(hSample);
 			if(iter!=sample_maping.end()){
-				FMOD_System_PlaySound(fmodSystem, iter->second, 0, false, 0);
-				if(DETAILOUTPUT)printf("Play\nLatency: %.4lfms\nhSample: %u\n",CPUclock()-Time,hSample);
+				FMOD_CHANNEL *Ch;
+				FMOD_System_PlaySound(fmodSystem, iter->second, NULL, false, &Ch);
+				if(DETAILOUTPUT){
+					int x;
+					FMOD_Channel_GetIndex(Ch,&x);
+					printf("Index: %d\n",x);
+					printf("Play\nLatency: %.4lfms\nhSample: %u\n",CPUclock()-Time,hSample);
+				}
+				FMOD_System_Update(fmodSystem);
 			}
 		}
 		//Sleep(1);

@@ -253,7 +253,9 @@ int main(int argc, char* argv[]) {
 		DllInject(hProcess,ch0);
 	}
 	Work=1;
-	HANDLE h1=CreateThread(0,0,(LPTHREAD_START_ROUTINE)mainloop,0,0,0);CloseHandle(h1);
+	HANDLE h1=CreateThread(0,0,(LPTHREAD_START_ROUTINE)mainloop,0,0,0);
+	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	SetThreadPriority(h1, HIGH_PRIORITY_CLASS);CloseHandle(h1);
 	MSG msg;
 	while(GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);

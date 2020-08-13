@@ -125,11 +125,11 @@ HSAMPLE WINAPI MyBASS_SampleLoad(BOOL mem, const void *file, QWORD offset, DWORD
 	return hSample;
 }
 HCHANNEL WINAPI MyBASS_SampleGetChannel(HSAMPLE handle, BOOL onlynew){
+	HCHANNEL Ch=pOrigBASS_SampleGetChannel(handle,onlynew);
 	int p=MyPool->Play.tail;
 	while((p+1)%PlayPoolSize==MyPool->Play.head);
 	if(DETAILOUTPUT)MyPool->Play.pool[p].Time=CPUclock();else MyPool->Play.pool[p].Time=0;
 	MyPool->Play.pool[p].hSample=handle;
-	HCHANNEL Ch=pOrigBASS_SampleGetChannel(handle,onlynew);
 	MyPool->Play.pool[p].Ch=Ch;
 	p=(p+1)%PlayPoolSize;
 	MyPool->Play.tail=p;

@@ -49,7 +49,7 @@ struct sharepool{
 		}pool[PlayPoolSize];
 	}Play;
 	struct StopS{
-		int head,tail;
+		volatile int head,tail;
 		HCHANNEL pool[StopPoolSize];
 	}Stop;
 };

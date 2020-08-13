@@ -2,8 +2,6 @@
 
 Low-latency sfx player modified from rustbell's keyasio and [zzhouhe's AsioHookForOsu](https://github.com/zzhouhe/AsioHookForOsu) using ASIO with [FMOD Core](https://www.fmod.com) \(Ver. 2.01.03\)  
 
-https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes)
-
 ## Compile  
 Install MinGW and double click Compile.bat  
 

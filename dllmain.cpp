@@ -4,17 +4,27 @@
 #include<algorithm>
 #include"MinHook.h"
 #include"sharepool.h"
+#include<unordered_map>
 
 using namespace std;
 
 typedef HSAMPLE (WINAPI *fpBASS_SampleLoad)(BOOL mem, const void *file, QWORD offset, DWORD length, DWORD max, DWORD flags);
 typedef HCHANNEL (WINAPI *fpBASS_SampleGetChannel)(HSAMPLE handle, BOOL onlynew);
+typedef BOOL (WINAPI *fpBASS_ChannelSetAttribute)(DWORD handle, DWORD attrib, float value);
+typedef BOOL (WINAPI *fpBASS_ChannelPlay)(DWORD handle, BOOL restart);
+typedef BOOL (WINAPI *fpBASS_ChannelStop)(DWORD handle);
 
 HSAMPLE WINAPI MyBASS_SampleLoad(BOOL mem, const void *file, QWORD offset, DWORD length, DWORD max, DWORD flags);
 HCHANNEL WINAPI MyBASS_SampleGetChannel(HSAMPLE handle, BOOL onlynew);
+BOOL WINAPI MyBASS_ChannelSetAttribute(DWORD handle, DWORD attrib, float value);
+BOOL WINAPI MyBASS_ChannelPlay(DWORD handle, BOOL restart);
+BOOL WINAPI MyBASS_ChannelStop(DWORD handle);
 
-fpBASS_SampleLoad pOrigBASS_SampleLoad = NULL,pBASS_SampleLoad = NULL;
-fpBASS_SampleGetChannel pOrigBASS_SampleGetChannel = NULL,pBASS_SampleGetChannel = NULL;
+fpBASS_SampleLoad pOrigBASS_SampleLoad = NULL, pBASS_SampleLoad = NULL;
+fpBASS_SampleGetChannel pOrigBASS_SampleGetChannel = NULL, pBASS_SampleGetChannel = NULL;
+fpBASS_ChannelSetAttribute pOrigBASS_ChannelSetAttribute = NULL, pBASS_ChannelSetAttribute = NULL;
+fpBASS_ChannelPlay pOrigBASS_ChannelPlay = NULL, pBASS_ChannelPlay = NULL;
+fpBASS_ChannelStop pOrigBASS_ChannelStop = NULL, pBASS_ChannelStop = NULL;
 
 struct sharepool *MyPool;
 HANDLE hMapFile;
@@ -43,6 +53,21 @@ extern "C" __declspec(dllexport) void initDLL(){
 		MessageBoxA(NULL,"Hook Failed: BASS_SampleGetChannel()", "Info", MB_ICONEXCLAMATION);
 		exit(0);
 	}
+	pBASS_ChannelSetAttribute = (fpBASS_ChannelSetAttribute) GetProcAddress(GetModuleHandle("bass.dll"), "BASS_ChannelSetAttribute");
+	if(MH_CreateHook((LPVOID)pBASS_ChannelSetAttribute,(LPVOID)MyBASS_ChannelSetAttribute,(PVOID*)&pOrigBASS_ChannelSetAttribute)){
+		MessageBoxA(NULL,"Hook Failed: BASS_ChannelSetAttribute()", "Info", MB_ICONEXCLAMATION);
+		exit(0);
+	}
+	pBASS_ChannelPlay = (fpBASS_ChannelPlay) GetProcAddress(GetModuleHandle("bass.dll"), "BASS_ChannelPlay");
+	if(MH_CreateHook((LPVOID)pBASS_ChannelPlay,(LPVOID)MyBASS_ChannelPlay,(PVOID*)&pOrigBASS_ChannelPlay)){
+		MessageBoxA(NULL,"Hook Failed: BASS_ChannelPlay()", "Info", MB_ICONEXCLAMATION);
+		exit(0);
+	}
+	pBASS_ChannelStop = (fpBASS_ChannelStop) GetProcAddress(GetModuleHandle("bass.dll"), "BASS_ChannelStop");
+	if(MH_CreateHook((LPVOID)pBASS_ChannelStop,(LPVOID)MyBASS_ChannelStop,(PVOID*)&pOrigBASS_ChannelStop)){
+		MessageBoxA(NULL,"Hook Failed: BASS_ChannelStop()", "Info", MB_ICONEXCLAMATION);
+		exit(0);
+	}
 	hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(struct sharepool), "ShareMemoryForOsuASIO4Play");
 	lpBase = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 	if(!(hMapFile&&lpBase)){
@@ -63,6 +88,9 @@ INT APIENTRY DllMain(HMODULE hDLL,DWORD Reason,LPVOID Reserved) {
 			MH_DisableHook(MH_ALL_HOOKS);
 			MH_RemoveHook((LPVOID)pOrigBASS_SampleLoad);
 			MH_RemoveHook((LPVOID)pOrigBASS_SampleGetChannel);
+			MH_RemoveHook((LPVOID)pOrigBASS_ChannelSetAttribute);
+			MH_RemoveHook((LPVOID)pOrigBASS_ChannelPlay);
+			MH_RemoveHook((LPVOID)pOrigBASS_ChannelStop);
 			MH_Uninitialize();
 			UnmapViewOfFile(lpBase);
 			CloseHandle(hMapFile);
@@ -97,13 +125,27 @@ HSAMPLE WINAPI MyBASS_SampleLoad(BOOL mem, const void *file, QWORD offset, DWORD
 	return hSample;
 }
 HCHANNEL WINAPI MyBASS_SampleGetChannel(HSAMPLE handle, BOOL onlynew){
-	
 	int p=MyPool->Play.tail;
 	while((p+1)%PlayPoolSize==MyPool->Play.head);
 	if(DETAILOUTPUT)MyPool->Play.pool[p].Time=CPUclock();else MyPool->Play.pool[p].Time=0;
-	MyPool->Play.pool[p].handle=handle;
+	MyPool->Play.pool[p].hSample=handle;
+	HCHANNEL Ch=pOrigBASS_SampleGetChannel(handle,onlynew);
+	MyPool->Play.pool[p].Ch=Ch;
 	p=(p+1)%PlayPoolSize;
 	MyPool->Play.tail=p;
-	//return pOrigBASS_SampleGetChannel(handle,onlynew);
-	return 0;
+	return Ch;
+}
+BOOL WINAPI MyBASS_ChannelSetAttribute(DWORD handle, DWORD attrib, float value){
+	return pOrigBASS_ChannelSetAttribute(handle, attrib, value);
+}
+BOOL WINAPI MyBASS_ChannelPlay(DWORD handle, BOOL restart){
+	return pOrigBASS_ChannelPlay(handle, restart);
+}
+BOOL WINAPI MyBASS_ChannelStop(DWORD handle){
+	int p=MyPool->Stop.tail;
+	while((p+1)%StopPoolSize==MyPool->Stop.head);
+	MyPool->Stop.pool[p]=handle;
+	p=(p+1)%StopPoolSize;
+	MyPool->Stop.tail=p;
+	return pOrigBASS_ChannelStop(handle);
 }

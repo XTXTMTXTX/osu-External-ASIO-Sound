@@ -26,12 +26,15 @@ typedef int BOOL;
 
 #define DETAILOUTPUT 0
 
+#define BASS_ATTRIB_VOL				2
+
 typedef unsigned __int64 QWORD;
 typedef DWORD HSAMPLE;		// sample handle
 typedef DWORD HCHANNEL;		// playing sample's channel handle
 
 const int LoadPoolSize=4096;
 const int PlayPoolSize=512;
+const int StopPoolSize=512;
 struct sharepool{
 	struct LoadS{
 		int head,tail;
@@ -41,7 +44,12 @@ struct sharepool{
 		int head,tail;
 		struct PlayP{
 			double Time;
-			HSAMPLE handle;
+			HSAMPLE hSample;
+			HCHANNEL Ch;
 		}pool[PlayPoolSize];
 	}Play;
+	struct StopS{
+		int head,tail;
+		HCHANNEL pool[StopPoolSize];
+	}Stop;
 };

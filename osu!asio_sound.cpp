@@ -41,6 +41,7 @@ double CPUclock(){
 }
 void mainloop(){
 	static unordered_map<HSAMPLE,FMOD_SOUND*> sample_maping;
+	static unordered_map<HCHANNEL,FMOD_CHANNEL*> channel_maping;
 	while(Work){
 		while(MyPool->Load.head!=MyPool->Load.tail){
 			//printf("[Load] %d -> %d\n",MyPool->Load.head,MyPool->Load.tail);
@@ -61,18 +62,31 @@ void mainloop(){
 		while(MyPool->Play.head!=MyPool->Play.tail){
 			if(DETAILOUTPUT)printf("[Play] %d -> %d\n",MyPool->Play.head,MyPool->Play.tail);
 			double Time=MyPool->Play.pool[MyPool->Play.head].Time;
-			HSAMPLE hSample=MyPool->Play.pool[MyPool->Play.head].handle;
+			HSAMPLE hSample=MyPool->Play.pool[MyPool->Play.head].hSample;
+			HCHANNEL Ch=MyPool->Play.pool[MyPool->Play.head].Ch;
 			MyPool->Play.head=(MyPool->Play.head+1)%PlayPoolSize;
 			auto iter=sample_maping.find(hSample);
 			if(iter!=sample_maping.end()){
-				FMOD_CHANNEL *Ch;
-				FMOD_System_PlaySound(fmodSystem, iter->second, NULL, false, &Ch);
+				FMOD_CHANNEL *FCh;
+				FMOD_System_PlaySound(fmodSystem, iter->second, NULL, false, &FCh);
+				channel_maping.insert(pair<HCHANNEL,FMOD_CHANNEL*>(Ch,FCh));
 				if(DETAILOUTPUT){
 					int x;
-					FMOD_Channel_GetIndex(Ch,&x);
+					FMOD_Channel_GetIndex(FCh,&x);
 					printf("Index: %d\n",x);
 					printf("Play\nLatency: %.4lfms\nhSample: %u\n",CPUclock()-Time,hSample);
 				}
+				FMOD_System_Update(fmodSystem);
+			}
+		}
+		while(MyPool->Stop.head!=MyPool->Stop.tail){
+			if(DETAILOUTPUT)printf("[Stop] %d -> %d\n",MyPool->Stop.head,MyPool->Stop.tail);
+			HSAMPLE hChannel=MyPool->Stop.pool[MyPool->Stop.head];
+			MyPool->Stop.head=(MyPool->Stop.head+1)%StopPoolSize;
+			auto iter=channel_maping.find(hChannel);
+			if(iter!=channel_maping.end()){
+				FMOD_Channel_Stop(iter->second);
+				if(DETAILOUTPUT)printf("Stop\nhChannel: %u\n",hChannel);
 				FMOD_System_Update(fmodSystem);
 			}
 		}
@@ -144,8 +158,6 @@ int main(int argc, char* argv[]) {
 	
 	
 	printf("FMOD Studio Low Level API (C) Firelight Technologies Pty Ltd.\n");
-	printf("For custom key bindings, refer keycodes on site:\n");
-	printf("    https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes\n\n");
 
 	FMOD_RESULT initRet = FMOD_System_Create(&fmodSystem);
 	if (initRet != FMOD_OK) {

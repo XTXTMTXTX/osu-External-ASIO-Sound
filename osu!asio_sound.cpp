@@ -8,6 +8,7 @@
 #include"fmod/inc/fmod_errors.h"
 #include<unordered_map>
 #include"sharepool.h"
+#define __EXESELECT
 
 
 using namespace std;
@@ -153,11 +154,25 @@ DWORD getPID(LPCSTR ProcessName) {
 	CloseHandle(hProcessSnap);
 	return dwPid;
 }
+char osuExename[256] = "osu!.exe";
 int main(int argc, char* argv[]) {
 	
 	
 	
 	printf("FMOD Studio Low Level API (C) Firelight Technologies Pty Ltd.\n");
+#ifdef __EXESELECT
+	printf("Input the osu's executable name with extension name (exp: osu!.exe): ");
+	char tmpc[256] = "";
+	int tmplenth = 0, tmpst = 0;
+	fgets(tmpc, 256, stdin);
+	tmplenth = strlen(tmpc);
+	while(tmplenth && (tmpc[tmplenth-1] == ' ' || tmpc[tmplenth-1] == '\n'|| tmpc[tmplenth-1] == '\r'))tmplenth--;
+	tmpc[tmplenth] = 0;
+	while(tmpst < tmplenth && (tmpc[tmpst] == ' ' || tmpc[tmpst] == '\n'|| tmpc[tmplenth-1] == '\r'))tmpst++;
+	if(tmplenth != tmpst)strcpy(osuExename, tmpc + tmpst);
+	puts("");
+	printf("Executable name is : \"%s\"\n", osuExename);
+#endif
 
 	FMOD_RESULT initRet = FMOD_System_Create(&fmodSystem);
 	if (initRet != FMOD_OK) {
@@ -221,7 +236,7 @@ int main(int argc, char* argv[]) {
 	UpPrivilege();
 	DWORD PID=0;
 	while(!PID){
-		PID=getPID("osu!.exe");
+		PID=getPID(osuExename);
 		Sleep(50);
 	}
 	Sleep(1000);

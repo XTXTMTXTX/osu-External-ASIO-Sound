@@ -2,6 +2,10 @@
 
 Low-latency sfx player modified from rustbell's keyasio and [zzhouhe's AsioHookForOsu](https://github.com/zzhouhe/AsioHookForOsu) using ASIO with [FMOD Core](https://www.fmod.com) \(Ver. 2.01.03\)  
 
+## ⚠Attention!
+
+**This program will modify osu!'s memory and may lead to a md5 hash error when you sign in. Furthermore, it may cause your account banned (no ban has been reported). Please use this program offline. Or sign in before if you can accept the risk.**
+
 ## Compile  
 Install MinGW and double click Compile.bat  
 

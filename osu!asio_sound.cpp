@@ -194,6 +194,7 @@ int main(int argc, char* argv[]) {
 		if (b == 0) b = 128;
 		FMOD_System_SetDSPBufferSize(fmodSystem, b, 2);
 	} else FMOD_System_SetDSPBufferSize(fmodSystem, 128, 2);
+	
 
 	FMOD_System_SetOutput(fmodSystem, FMOD_OUTPUTTYPE_ASIO);
 	int driverId, driverNums;
@@ -209,18 +210,23 @@ int main(int argc, char* argv[]) {
 	printf("Please select the DeviceID: ");
 	driverId = readNUM();
 	FMOD_System_SetDriver(fmodSystem, driverId);
-	FMOD_System_GetDriver(fmodSystem, &driverId);
-	FMOD_System_GetDriverInfo(fmodSystem, driverId, name, 255, 0, &systemRate, 0, &speakerChannels);
+	
 	unsigned bufLen;
 	int bufNum;
-	FMOD_System_GetDSPBufferSize(fmodSystem, &bufLen, &bufNum);
-
+	printf("Please input sample rate: ");
+	systemRate = readNUM();
+	
+	FMOD_System_SetSoftwareFormat(fmodSystem, systemRate, FMOD_SPEAKERMODE_DEFAULT, FMOD_MAX_CHANNEL_WIDTH);
+	
 	initRet = FMOD_System_Init(fmodSystem, 32, FMOD_INIT_NORMAL, 0);
 	if (initRet != FMOD_OK) {
 		printf("FMOD System Initialize Failed: %s\n", FMOD_ErrorString((FMOD_RESULT)initRet));
 		system("pause");
 		return 0;
 	}
+	Sleep(1000);
+	FMOD_System_GetDriverInfo(fmodSystem, driverId, name, 255, 0, 0, 0, &speakerChannels);
+	FMOD_System_GetDSPBufferSize(fmodSystem, &bufLen, &bufNum);
 	printf("FMOD System Initialize Finished.\n");
 	printf("[FMOD] Device Name: %s\n", name);
 	printf("[FMOD] Device Sample Rate: %d\n", systemRate);

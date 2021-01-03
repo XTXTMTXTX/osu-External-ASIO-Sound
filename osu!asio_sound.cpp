@@ -17,96 +17,97 @@ FMOD_SYSTEM *fmodSystem;
 struct sharepool *MyPool;
 
 inline int readNUM() {
-	int x=0,f=1;
-	char ch=getchar();
-	while(ch<'0'||ch>'9') {
-		if(ch=='-')f=-1;
-		ch=getchar();
+	int x = 0, f = 1;
+	char ch = getchar();
+	while(ch < '0' || ch > '9') {
+		if(ch == '-')f = -1;
+		ch = getchar();
 	}
-	while(ch>='0'&&ch<='9') {
-		x=x*10+ch-'0';
-		ch=getchar();
+	while(ch >= '0' && ch <= '9') {
+		x = x * 10 + ch - '0';
+		ch = getchar();
 	}
-	return x*f;
+	return x * f;
 }
-bool Work=0;
+bool Work = 0;
 FMOD_SOUND *KeySound;
-double CPUclock(){
+double CPUclock() {
 	LARGE_INTEGER nFreq;
 	LARGE_INTEGER t1;
 	double dt;
- 	QueryPerformanceFrequency(&nFreq);
- 	QueryPerformanceCounter(&t1);
-  	dt=(t1.QuadPart)/(double)nFreq.QuadPart;
-  	return(dt*1000);
+	QueryPerformanceFrequency(&nFreq);
+	QueryPerformanceCounter(&t1);
+	dt = (t1.QuadPart) / (double)nFreq.QuadPart;
+	return(dt * 1000);
 }
-void mainloop(){
+void mainloop() {
 	static unordered_map<HSAMPLE,FMOD_SOUND*> sample_maping;
 	static unordered_map<HCHANNEL,FMOD_CHANNEL*> channel_maping;
-	while(Work){
-		while(MyPool->Load.head!=MyPool->Load.tail){
+	while(Work) {
+		while(MyPool->Load.head != MyPool -> Load.tail) {
 			//printf("[Load] %d -> %d\n",MyPool->Load.head,MyPool->Load.tail);
-			HSAMPLE hSample=MyPool->Load.pool[MyPool->Load.head];
-			MyPool->Load.head=(MyPool->Load.head+1)%LoadPoolSize;
+			HSAMPLE hSample = MyPool->Load.pool[MyPool->Load.head];
+			MyPool->Load.head = (MyPool->Load.head+1) % LoadPoolSize;
 			char name[256];
 			int i;
-			for(i=0; MyPool->Load.pool[MyPool->Load.head]!=0; MyPool->Load.head=(MyPool->Load.head+1)%LoadPoolSize, i++)name[i]=MyPool->Load.pool[MyPool->Load.head];
-			name[i]=0;MyPool->Load.head=(MyPool->Load.head+1)%LoadPoolSize;
-			printf("Load Name: %s\nhSample: %u\n",name,hSample);
+			for(i = 0; MyPool->Load.pool[MyPool->Load.head] != 0; MyPool->Load.head = (MyPool->Load.head+1) % LoadPoolSize, i++) name[i] = MyPool->Load.pool[MyPool->Load.head];
+			name[i] = 0;
+			MyPool->Load.head = (MyPool->Load.head + 1) % LoadPoolSize;
+			printf("Load Name: %s\nhSample: %u\n", name, hSample);
 			FMOD_RESULT err;
-			if (FMOD_OK == (err=FMOD_System_CreateSound(fmodSystem, name, FMOD_LOOP_OFF|FMOD_NONBLOCKING|FMOD_LOWMEM|FMOD_MPEGSEARCH|FMOD_CREATESAMPLE|FMOD_IGNORETAGS, 0, &KeySound))) {
+			if (FMOD_OK == (err = FMOD_System_CreateSound(fmodSystem, name, FMOD_LOOP_OFF | FMOD_NONBLOCKING | FMOD_LOWMEM | FMOD_MPEGSEARCH | FMOD_CREATESAMPLE | FMOD_IGNORETAGS, 0, &KeySound))) {
 				printf("[FMOD] Loaded Sample (%s)\n", name);
-				sample_maping.insert(pair<HSAMPLE,FMOD_SOUND*>(hSample,KeySound));
-			}else printf("[FMOD] %s\n",FMOD_ErrorString(err));
+				sample_maping.insert(pair<HSAMPLE, FMOD_SOUND*>(hSample, KeySound));
+			} else printf("[FMOD] %s\n", FMOD_ErrorString(err));
 			FMOD_System_Update(fmodSystem);
 		}
-		while(MyPool->Play.head!=MyPool->Play.tail){
-			if(DETAILOUTPUT)printf("[Play] %d -> %d\n",MyPool->Play.head,MyPool->Play.tail);
-			double Time=MyPool->Play.pool[MyPool->Play.head].Time;
-			HSAMPLE hSample=MyPool->Play.pool[MyPool->Play.head].hSample;
-			HCHANNEL Ch=MyPool->Play.pool[MyPool->Play.head].Ch;
-			MyPool->Play.head=(MyPool->Play.head+1)%PlayPoolSize;
-			auto iter=sample_maping.find(hSample);
-			if(iter!=sample_maping.end()){
+		while(MyPool->Play.head != MyPool->Play.tail) {
+			if(DETAILOUTPUT)printf("[Play] %d -> %d\n", MyPool->Play.head, MyPool->Play.tail);
+			double Time = MyPool->Play.pool[MyPool->Play.head].Time;
+			HSAMPLE hSample = MyPool->Play.pool[MyPool->Play.head].hSample;
+			HCHANNEL Ch = MyPool->Play.pool[MyPool->Play.head].Ch;
+			MyPool->Play.head = (MyPool->Play.head + 1) % PlayPoolSize;
+			auto iter = sample_maping.find(hSample);
+			if(iter != sample_maping.end()) {
 				FMOD_CHANNEL *FCh;
 				FMOD_System_PlaySound(fmodSystem, iter->second, NULL, false, &FCh);
-				channel_maping.insert(pair<HCHANNEL,FMOD_CHANNEL*>(Ch,FCh));
-				if(DETAILOUTPUT){
+				channel_maping.insert(pair<HCHANNEL, FMOD_CHANNEL*>(Ch, FCh));
+				if(DETAILOUTPUT) {
 					int x;
-					FMOD_Channel_GetIndex(FCh,&x);
-					printf("Index: %d\n",x);
-					printf("Play\nLatency: %.4lfms\nhSample: %u\n",CPUclock()-Time,hSample);
+					FMOD_Channel_GetIndex(FCh, &x);
+					printf("Index: %d\n", x);
+					printf("Play\nLatency: %.4lfms\nhSample: %u\n", CPUclock()-Time, hSample);
 				}
 				FMOD_System_Update(fmodSystem);
 			}
 		}
-		while(MyPool->Stop.head!=MyPool->Stop.tail){
-			if(DETAILOUTPUT)printf("[Stop] %d -> %d\n",MyPool->Stop.head,MyPool->Stop.tail);
-			HSAMPLE hChannel=MyPool->Stop.pool[MyPool->Stop.head];
-			MyPool->Stop.head=(MyPool->Stop.head+1)%StopPoolSize;
-			auto iter=channel_maping.find(hChannel);
-			if(iter!=channel_maping.end()){
+		while(MyPool->Stop.head != MyPool->Stop.tail) {
+			if(DETAILOUTPUT)printf("[Stop] %d -> %d\n", MyPool->Stop.head, MyPool->Stop.tail);
+			HSAMPLE hChannel = MyPool->Stop.pool[MyPool->Stop.head];
+			MyPool->Stop.head = (MyPool->Stop.head+1)%StopPoolSize;
+			auto iter = channel_maping.find(hChannel);
+			if(iter != channel_maping.end()) {
 				FMOD_Channel_Stop(iter->second);
-				if(DETAILOUTPUT)printf("Stop\nhChannel: %u\n",hChannel);
+				if(DETAILOUTPUT)printf("Stop\nhChannel: %u\n", hChannel);
 				FMOD_System_Update(fmodSystem);
 			}
 		}
 		//Sleep(1);
 	}
 }
-bool UpPrivilege(){   
-    HANDLE hToken;
-    TOKEN_PRIVILEGES tkp;
-    bool result = OpenProcessToken(GetCurrentProcess(),TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY,&hToken);   
-    if(!result)return result;   
-    result=LookupPrivilegeValue(NULL,SE_DEBUG_NAME,&tkp.Privileges[0].Luid);   
-    if(!result)return result;   
-    tkp.PrivilegeCount=1; 
-    tkp.Privileges[0].Attributes=SE_PRIVILEGE_ENABLED;   
-    result=AdjustTokenPrivileges(hToken,FALSE,&tkp,sizeof(TOKEN_PRIVILEGES),(PTOKEN_PRIVILEGES)NULL,(PDWORD)NULL);   
-    return result;   
+bool UpPrivilege() {
+	HANDLE hToken;
+	TOKEN_PRIVILEGES tkp;
+	bool result = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
+	if(!result) return result;
+	result = LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tkp.Privileges[0].Luid);
+	if(!result) return result;
+	tkp.PrivilegeCount = 1;
+	tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	result = AdjustTokenPrivileges(hToken, FALSE, &tkp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL);
+	return result;
 }
-HMODULE DllInject(HANDLE hProcess,const char *dllname){
+HMODULE DllInject(HANDLE hProcess, const char *dllname) {
 	unsigned long  (__stdcall *faddr)(void*);
 	size_t abc;
 	HMODULE hdll;
@@ -114,51 +115,48 @@ HMODULE DllInject(HANDLE hProcess,const char *dllname){
 	LPVOID paddr;
 	unsigned long exitcode;
 	int dllnamelen;
-	hdll=GetModuleHandleA("kernel32.dll");
-	if(hdll==0) return 0;
-	faddr=(unsigned long (__stdcall *)(void*))GetProcAddress(hdll,"LoadLibraryA");
-	if(faddr==0) return 0;
-	dllnamelen=strlen(dllname)+1;
-	paddr=VirtualAllocEx(hProcess,NULL,dllnamelen,MEM_COMMIT,PAGE_READWRITE);
-	if(paddr==0) return 0;
-	WriteProcessMemory(hProcess,paddr,(void*)dllname,strlen(dllname)+1,(SIZE_T*) &abc);
-	ht=CreateRemoteThread(hProcess,NULL,0,faddr, paddr,0,NULL);
-	if(ht==0){
-		VirtualFreeEx(hProcess,paddr,dllnamelen,MEM_DECOMMIT);
+	hdll = GetModuleHandleA("kernel32.dll");
+	if(hdll == 0) return 0;
+	faddr = (unsigned long (__stdcall *)(void*))GetProcAddress(hdll, "LoadLibraryA");
+	if(faddr == 0) return 0;
+	dllnamelen = strlen(dllname) + 1;
+	paddr = VirtualAllocEx(hProcess, NULL, dllnamelen, MEM_COMMIT, PAGE_READWRITE);
+	if(paddr == 0) return 0;
+	WriteProcessMemory(hProcess, paddr, (void*)dllname, strlen(dllname) + 1, (SIZE_T*) &abc);
+	ht = CreateRemoteThread(hProcess, NULL, 0, faddr, paddr, 0, NULL);
+	if(ht == 0) {
+		VirtualFreeEx(hProcess, paddr, dllnamelen, MEM_DECOMMIT);
 		return 0;
 	}
-	WaitForSingleObject(ht,INFINITE);
-	GetExitCodeThread(ht,&exitcode);
+	WaitForSingleObject(ht, INFINITE);
+	GetExitCodeThread(ht, &exitcode);
 	CloseHandle(ht);
-	VirtualFreeEx(hProcess,paddr,dllnamelen,MEM_DECOMMIT);
+	VirtualFreeEx(hProcess, paddr, dllnamelen, MEM_DECOMMIT);
 	return (HMODULE)exitcode;
 }
 DWORD getPID(LPCSTR ProcessName) {
 	HANDLE hProcessSnap;
 	PROCESSENTRY32 pe32;
 	// Take a snapshot of all processes in the system.
-	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
+	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hProcessSnap == INVALID_HANDLE_VALUE)return 0;
 	pe32.dwSize = sizeof(PROCESSENTRY32);
-	if (!Process32First(hProcessSnap,&pe32)) {
+	if (!Process32First(hProcessSnap, &pe32)) {
 		CloseHandle(hProcessSnap);          // clean the snapshot object
 		return 0;
 	}
-	DWORD dwPid=0;
+	DWORD dwPid = 0;
 	do {
 		if(!strcmp(ProcessName, pe32.szExeFile)) {
-			dwPid=pe32.th32ProcessID;
+			dwPid = pe32.th32ProcessID;
 			break;
 		}
-	} while(Process32Next(hProcessSnap,&pe32));
+	} while(Process32Next(hProcessSnap, &pe32));
 	CloseHandle(hProcessSnap);
 	return dwPid;
 }
 char osuExename[256] = "osu!.exe";
 int main(int argc, char* argv[]) {
-	
-	
-	
 	printf("FMOD Studio Low Level API (C) Firelight Technologies Pty Ltd.\n");
 #ifdef __EXESELECT
 	printf("Input the osu's executable name with extension name (exp: osu!.exe): ");
@@ -184,17 +182,17 @@ int main(int argc, char* argv[]) {
 	LPVOID lpBase;
 	hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(struct sharepool), "ShareMemoryForOsuASIO4Play");
 	lpBase = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-	if(hMapFile&&lpBase)puts("ShareMemory Success.");
-	MyPool=(struct sharepool*)lpBase;
+	if(hMapFile&&lpBase) puts("ShareMemory Success.");
+	MyPool = (struct sharepool*)lpBase;
 	memset(MyPool,0,sizeof(struct sharepool));
-	printf("Pool Size: %dKB\n\n",sizeof(struct sharepool)/1024);
-	
+	printf("Pool Size: %dKB\n\n", sizeof(struct sharepool)/1024);
+
 	if (argc >= 2) {
 		int b = atoi(argv[1]);
 		if (b == 0) b = 128;
 		FMOD_System_SetDSPBufferSize(fmodSystem, b, 2);
 	} else FMOD_System_SetDSPBufferSize(fmodSystem, 128, 2);
-	
+
 
 	FMOD_System_SetOutput(fmodSystem, FMOD_OUTPUTTYPE_ASIO);
 	int driverId, driverNums;
@@ -210,14 +208,17 @@ int main(int argc, char* argv[]) {
 	printf("Please select the DeviceID: ");
 	driverId = readNUM();
 	FMOD_System_SetDriver(fmodSystem, driverId);
-	
+
 	unsigned bufLen;
 	int bufNum;
-	printf("Please input sample rate: ");
-	systemRate = readNUM();
 	
+	FMOD_System_GetDriverInfo(fmodSystem, driverId, name, 255, 0, &systemRate, 0, &speakerChannels);
+	printf("Please input sample rate (input 0 for %dhz): ", systemRate);
+	int tmpSysRate = readNUM();
+	systemRate = (tmpSysRate == 0 ? systemRate : tmpSysRate);
+
 	FMOD_System_SetSoftwareFormat(fmodSystem, systemRate, FMOD_SPEAKERMODE_DEFAULT, FMOD_MAX_CHANNEL_WIDTH);
-	
+
 	initRet = FMOD_System_Init(fmodSystem, 32, FMOD_INIT_NORMAL, 0);
 	if (initRet != FMOD_OK) {
 		printf("FMOD System Initialize Failed: %s\n", FMOD_ErrorString((FMOD_RESULT)initRet));
@@ -238,11 +239,11 @@ int main(int argc, char* argv[]) {
 //		printf("[FMOD] Loaded Sample (%s)\n", "Key_Default.wav");
 //	}
 //	FMOD_System_PlaySound(fmodSystem, KeySound, 0, false, 0);
-	
+
 	UpPrivilege();
-	DWORD PID=0;
-	while(!PID){
-		PID=getPID(osuExename);
+	DWORD PID = 0;
+	while(!PID) {
+		PID = getPID(osuExename);
 		Sleep(50);
 	}
 	Sleep(1000);
@@ -254,35 +255,36 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}*/
 	HANDLE hProcess;
-	if(!(hProcess=OpenProcess(PROCESS_ALL_ACCESS,0,PID))){
+	if(!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, 0, PID))) {
 		puts("Opening Failed");
 		system("pause");
 		return 0;
 	}
 	{
 		char ch0[512];
-		strcpy(ch0,_pgmptr);
+		strcpy(ch0, _pgmptr);
 		{
-			char* p=ch0;
-			while(strchr(p,'\\')) {
-				p = strchr(p,'\\');
+			char* p = ch0;
+			while(strchr(p, '\\')) {
+				p = strchr(p, '\\');
 				p++;
 			}
 			*p = '\0';
 		}
-		strcat(ch0,"osu!asio_sound");
-		DllInject(hProcess,ch0);
+		strcat(ch0, "osu!asio_sound");
+		DllInject(hProcess, ch0);
 	}
-	Work=1;
-	HANDLE h1=CreateThread(0,0,(LPTHREAD_START_ROUTINE)mainloop,0,0,0);
+	Work = 1;
+	HANDLE h1 = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)mainloop, 0, 0, 0);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-	SetThreadPriority(h1, HIGH_PRIORITY_CLASS);CloseHandle(h1);
+	SetThreadPriority(h1, HIGH_PRIORITY_CLASS);
+	CloseHandle(h1);
 	MSG msg;
 	while(GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
-	Work=0;
+	Work = 0;
 	if (initRet == FMOD_OK && fmodSystem != nullptr) {
 		FMOD_System_Release(fmodSystem);
 		printf("FMOD System released.\n");

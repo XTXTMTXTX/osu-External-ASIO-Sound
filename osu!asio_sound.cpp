@@ -1,36 +1,47 @@
-#include<cstdio>
-#include<cstring>
-#include<cstdlib>
-#include<windows.h>
-#include<winuser.h>
-#include<TlHelp32.h>
-#include"fmod/inc/fmod.h"
-#include"fmod/inc/fmod_errors.h"
-#include<unordered_map>
-#include"sharepool.h"
-#define __EXESELECT
-
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <windows.h>
+#include <winuser.h>
+#include <TlHelp32.h>
+#include "fmod/inc/fmod.h"
+#include "fmod/inc/fmod_errors.h"
+#include <unordered_map>
+#include "sharepool.h"
 
 using namespace std;
 FMOD_SYSTEM *fmodSystem;
 
 struct sharepool *MyPool;
-
-inline int readNUM() {
-	int x = 0, f = 1;
-	char ch = getchar();
-	while(ch < '0' || ch > '9') {
-		if(ch == '-')f = -1;
-		ch = getchar();
-	}
-	while(ch >= '0' && ch <= '9') {
-		x = x * 10 + ch - '0';
-		ch = getchar();
-	}
-	return x * f;
-}
 bool Work = 0;
 FMOD_SOUND *KeySound;
+
+int bufferSize = 128, driverId = 0, sampleRate = 48000;
+
+int read(FILE *fp){
+	int x=0,f=1;char ch=fgetc(fp);
+	while(ch<'0'||ch>'9'){if(ch=='-')f=-1;ch=fgetc(fp);}
+	while(ch>='0'&&ch<='9'){x=x*10+ch-'0';ch=fgetc(fp);}
+	return x*f;
+}
+
+void init(bool forceWrite = false){
+	FILE *fp;
+	if(forceWrite || !(fp = fopen("config.ini", "r"))){
+		fp = fopen("config.ini", "w");
+		fprintf(fp, "[Config]\n");
+		fprintf(fp, "Buffer Size = %d\n", bufferSize);
+		fprintf(fp, "ASIO Driver ID = %d\n", driverId);
+		fprintf(fp, "Sample Rate = %d\n", sampleRate);
+		fclose(fp);
+	}else{
+		bufferSize = read(fp);
+		driverId = read(fp);
+		sampleRate = read(fp);
+		fclose(fp);
+	}
+}
+
 double CPUclock() {
 	LARGE_INTEGER nFreq;
 	LARGE_INTEGER t1;
@@ -53,7 +64,7 @@ void mainloop() {
 			for(i = 0; MyPool->Load.pool[MyPool->Load.head] != 0; MyPool->Load.head = (MyPool->Load.head+1) % LoadPoolSize, i++) name[i] = MyPool->Load.pool[MyPool->Load.head];
 			name[i] = 0;
 			MyPool->Load.head = (MyPool->Load.head + 1) % LoadPoolSize;
-			printf("Load Name: %s\nhSample: %u\n", name, hSample);
+			printf("Load Name: %s\nhSample: %lu\n", name, hSample);
 			FMOD_RESULT err;
 			if (FMOD_OK == (err = FMOD_System_CreateSound(fmodSystem, name, FMOD_LOOP_OFF | FMOD_NONBLOCKING | FMOD_LOWMEM | FMOD_MPEGSEARCH | FMOD_CREATESAMPLE | FMOD_IGNORETAGS, 0, &KeySound))) {
 				printf("[FMOD] Loaded Sample (%s)\n", name);
@@ -76,7 +87,7 @@ void mainloop() {
 					int x;
 					FMOD_Channel_GetIndex(FCh, &x);
 					printf("Index: %d\n", x);
-					printf("Play\nLatency: %.4lfms\nhSample: %u\n", CPUclock()-Time, hSample);
+					printf("Play\nLatency: %.4lfms\nhSample: %lu\n", CPUclock()-Time, hSample);
 				}
 				FMOD_System_Update(fmodSystem);
 			}
@@ -88,7 +99,7 @@ void mainloop() {
 			auto iter = channel_maping.find(hChannel);
 			if(iter != channel_maping.end()) {
 				FMOD_Channel_Stop(iter->second);
-				if(DETAILOUTPUT)printf("Stop\nhChannel: %u\n", hChannel);
+				if(DETAILOUTPUT)printf("Stop\nhChannel: %lu\n", hChannel);
 				FMOD_System_Update(fmodSystem);
 			}
 		}
@@ -157,7 +168,9 @@ DWORD getPID(LPCSTR ProcessName) {
 }
 char osuExename[256] = "osu!.exe";
 int main(int argc, char* argv[]) {
+    init();
 	printf("FMOD Studio Low Level API (C) Firelight Technologies Pty Ltd.\n");
+	
 #ifdef __EXESELECT
 	printf("Input the osu's executable name with extension name (exp: osu!.exe): ");
 	char tmpc[256] = "";
@@ -187,38 +200,10 @@ int main(int argc, char* argv[]) {
 	memset(MyPool,0,sizeof(struct sharepool));
 	printf("Pool Size: %dKB\n\n", sizeof(struct sharepool)/1024);
 
-	if (argc >= 2) {
-		int b = atoi(argv[1]);
-		if (b == 0) b = 128;
-		FMOD_System_SetDSPBufferSize(fmodSystem, b, 2);
-	} else FMOD_System_SetDSPBufferSize(fmodSystem, 128, 2);
-
-
+    FMOD_System_SetDSPBufferSize(fmodSystem, bufferSize, 2);
 	FMOD_System_SetOutput(fmodSystem, FMOD_OUTPUTTYPE_ASIO);
-	int driverId, driverNums;
-	FMOD_System_GetNumDrivers(fmodSystem, &driverNums);
-	char name[256];
-	int systemRate;
-	int speakerChannels;
-
-	for (int i = 0; i < driverNums; i++) {
-		FMOD_System_GetDriverInfo(fmodSystem, i, name, 255, 0, &systemRate, 0, &speakerChannels);
-		printf("DeviceID: %-3d DeviceName: %s  Rate: %d  Channels: %d\n", i, name, systemRate, speakerChannels);
-	}
-	printf("Please select the DeviceID: ");
-	driverId = readNUM();
 	FMOD_System_SetDriver(fmodSystem, driverId);
-
-	unsigned bufLen;
-	int bufNum;
-	
-	FMOD_System_GetDriverInfo(fmodSystem, driverId, name, 255, 0, &systemRate, 0, &speakerChannels);
-	printf("Please input sample rate (input 0 for %dhz): ", systemRate);
-	int tmpSysRate = readNUM();
-	systemRate = (tmpSysRate == 0 ? systemRate : tmpSysRate);
-
-	FMOD_System_SetSoftwareFormat(fmodSystem, systemRate, FMOD_SPEAKERMODE_DEFAULT, FMOD_MAX_CHANNEL_WIDTH);
-
+	FMOD_System_SetSoftwareFormat(fmodSystem, sampleRate, FMOD_SPEAKERMODE_DEFAULT, FMOD_MAX_CHANNEL_WIDTH);
 	initRet = FMOD_System_Init(fmodSystem, 32, FMOD_INIT_NORMAL, 0);
 	if (initRet != FMOD_OK) {
 		printf("FMOD System Initialize Failed: %s\n", FMOD_ErrorString((FMOD_RESULT)initRet));
@@ -226,19 +211,18 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	Sleep(1000);
-	FMOD_System_GetDriverInfo(fmodSystem, driverId, name, 255, 0, 0, 0, &speakerChannels);
+	unsigned bufLen;
+	int bufNum;
+	char name[256];
+	int speakerChannels;
 	FMOD_System_GetDSPBufferSize(fmodSystem, &bufLen, &bufNum);
+	FMOD_System_GetDriverInfo(fmodSystem, driverId, name, 255, 0, 0, 0, &speakerChannels);
 	printf("FMOD System Initialize Finished.\n");
 	printf("[FMOD] Device Name: %s\n", name);
-	printf("[FMOD] Device Sample Rate: %d\n", systemRate);
+	printf("[FMOD] Device Sample Rate: %d\n", sampleRate);
 	printf("[FMOD] Device Channels: %d\n", speakerChannels);
 	printf("[FMOD] DSP buffer size: %d * %d\n", bufLen, bufNum);
-	printf("[FMOD] Latency: %.10lfms\n", bufLen * bufNum * 1000.0 / systemRate);
-
-//	if (FMOD_OK == FMOD_System_CreateSound(fmodSystem, "Key_Default.wav", FMOD_UNIQUE, 0, &KeySound)) {
-//		printf("[FMOD] Loaded Sample (%s)\n", "Key_Default.wav");
-//	}
-//	FMOD_System_PlaySound(fmodSystem, KeySound, 0, false, 0);
+	printf("[FMOD] Latency: %.10lfms\n", bufLen * bufNum * 1000.0 / sampleRate);
 
 	UpPrivilege();
 	DWORD PID = 0;
@@ -247,13 +231,7 @@ int main(int argc, char* argv[]) {
 		Sleep(50);
 	}
 	Sleep(1000);
-	/*
-	PID=getPID("osu!.exe");
-	if(!PID){
-		puts("Please open osu first.");
-		system("pause");
-		return 0;
-	}*/
+	
 	HANDLE hProcess;
 	if(!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, 0, PID))) {
 		puts("Opening Failed");

@@ -9,11 +9,6 @@ Low-latency sfx player modified from rustbell's keyasio and [zzhouhe's AsioHookF
 ## Compile  
 Install MinGW and double click Compile.bat  
 
-## Command Line  
-osu!asio_sound.exe \[Buffer Size\]
-
-e.g. osu!asio_sound.exe 64
-
 ## How to Use  
 ### First Time
 

@@ -43,6 +43,8 @@ If you don't hear anything, check the asio4all control panel and set a larger Bu
 
 ### Generally
 
+0) Execute config.exe.
+
 1) Open osu!.
 
 2) Execute osu!asio_sound.exe.
